@@ -97,12 +97,22 @@ void ASSDrawSettingsDialog::Init()
 	APPENDCOLOURPROP(colors_ruler_h_pgid, _T("H ruler"), m_frame->colors.ruler_h)
 	APPENDCOLOURPROP(colors_ruler_v_pgid, _T("V ruler"), m_frame->colors.ruler_v)
 
-    propgrid->Append(new wxPropertyCategory(_T("Behaviors"),wxPG_LABEL) );
+	propgrid->Append(new wxPropertyCategory(_T("Behaviors"),wxPG_LABEL) );
 	APPENDBOOLPROP(behaviors_capitalizecmds_pgid, _T("Capitalize commands"), m_frame->behaviors.capitalizecmds);
 	APPENDBOOLPROP(behaviors_autoaskimgopac_pgid, _T("Ask for image opacity"), m_frame->behaviors.autoaskimgopac);
 	APPENDBOOLPROP(behaviors_parse_spc_pgid, _T("Parse S/P/C"), m_frame->behaviors.parse_spc);
 	APPENDBOOLPROP(behaviors_nosplashscreen_pgid, _T("No splash screen"), m_frame->behaviors.nosplashscreen);
 	APPENDBOOLPROP(behaviors_confirmquit_pgid, _T("Confirm quit"), m_frame->behaviors.confirmquit);
+
+	propgrid->Append(new wxPropertyCategory(_T("Shape"),wxPG_LABEL) );
+	APPENDBOOLPROP(shape_fill_enabled_pgid, _T("Fill enabled"), m_frame->shape_style.fill_enabled);
+	APPENDCOLOURPROP(shape_fill_color_pgid, _T("Fill color"), wxColour(m_frame->shape_style.fill_color.red, m_frame->shape_style.fill_color.green, m_frame->shape_style.fill_color.blue));
+	APPENDUINTPROP(shape_fill_opacity_pgid, _T("Fill opacity"), m_frame->shape_style.fill_opacity);
+	APPENDBOOLPROP(shape_outline_enabled_pgid, _T("Outline enabled"), m_frame->shape_style.outline_enabled);
+	shape_outline_width_pgid = propgrid->Append(new wxFloatProperty(_T("Outline width"), wxPG_LABEL, m_frame->shape_style.outline_width));
+	APPENDCOLOURPROP(shape_outline_color_pgid, _T("Outline color"), wxColour(m_frame->shape_style.outline_color.red, m_frame->shape_style.outline_color.green, m_frame->shape_style.outline_color.blue));
+	APPENDUINTPROP(shape_outline_opacity_pgid, _T("Outline opacity"), m_frame->shape_style.outline_opacity);
+	propgrid->Bind(wxEVT_PG_CHANGED, &ASSDrawSettingsDialog::OnSettingsPropertyChanged, this);
 
 	wxFlexGridSizer *sizer = new wxFlexGridSizer(2, 1, 0, 0);
 	sizer->AddGrowableCol(0);
@@ -131,8 +141,7 @@ ASSDrawSettingsDialog::~ASSDrawSettingsDialog()
 void ASSDrawSettingsDialog::OnSettingsApplyButtonClicked(wxCommandEvent &event)
 {
 
-	wxButton *button = (wxButton *) event.GetEventObject();
-	//wxPropertyGrid *propgrid = (wxPropertyGrid *) button->GetClientData();
+	wxObject *event_object = event.GetEventObject();
 	if (propgrid == NULL) return;
 
 	#define PARSECOLOR(color, pgid) \
@@ -173,10 +182,29 @@ void ASSDrawSettingsDialog::OnSettingsApplyButtonClicked(wxCommandEvent &event)
 	PARSE(&m_frame->behaviors.nosplashscreen, behaviors_nosplashscreen_pgid)
 	PARSE(&m_frame->behaviors.confirmquit, behaviors_confirmquit_pgid)
 
+	PARSE(&m_frame->shape_style.fill_enabled, shape_fill_enabled_pgid)
+	PARSE(&m_frame->shape_style.outline_enabled, shape_outline_enabled_pgid)
+	long shape_opacity = 255;
+	PARSE(&shape_opacity, shape_fill_opacity_pgid)
+	m_frame->shape_style.fill_opacity = static_cast<std::uint8_t>(shape_opacity);
+	PARSE(&shape_opacity, shape_outline_opacity_pgid)
+	m_frame->shape_style.outline_opacity = static_cast<std::uint8_t>(shape_opacity);
+	m_frame->shape_style.outline_width = propgrid->GetPropertyValue(shape_outline_width_pgid).GetDouble();
+	wxColour shape_color;
+	PARSECOLOR(shape_color, shape_fill_color_pgid)
+	m_frame->shape_style.fill_color = { shape_color.Red(), shape_color.Green(), shape_color.Blue() };
+	PARSECOLOR(shape_color, shape_outline_color_pgid)
+	m_frame->shape_style.outline_color = { shape_color.Red(), shape_color.Green(), shape_color.Blue() };
+
 	wxCommandEvent evento( wxEVT_SETTINGS_CHANGED, event.GetId() );
-    evento.SetEventObject( button );
+	evento.SetEventObject(event_object);
     m_frame->GetEventHandler()->ProcessEvent( evento );
 
+}
+
+void ASSDrawSettingsDialog::OnSettingsPropertyChanged(wxPropertyGridEvent &event)
+{
+	OnSettingsApplyButtonClicked(event);
 }
 
 void ASSDrawSettingsDialog::OnSettingsRevertButtonClicked(wxCommandEvent &event)
@@ -219,5 +247,12 @@ void ASSDrawSettingsDialog::RefreshSettingsDisplay()
 	UPDATESETTING(m_frame->behaviors.parse_spc, behaviors_parse_spc_pgid)
 	UPDATESETTING(m_frame->behaviors.nosplashscreen, behaviors_nosplashscreen_pgid)
 	UPDATESETTING(m_frame->behaviors.confirmquit, behaviors_confirmquit_pgid)
+	UPDATESETTING(m_frame->shape_style.fill_enabled, shape_fill_enabled_pgid)
+	UPDATESETTING(wxColour(m_frame->shape_style.fill_color.red, m_frame->shape_style.fill_color.green, m_frame->shape_style.fill_color.blue), shape_fill_color_pgid)
+	UPDATESETTING(m_frame->shape_style.fill_opacity, shape_fill_opacity_pgid)
+	UPDATESETTING(m_frame->shape_style.outline_enabled, shape_outline_enabled_pgid)
+	UPDATESETTING(m_frame->shape_style.outline_width, shape_outline_width_pgid)
+	UPDATESETTING(wxColour(m_frame->shape_style.outline_color.red, m_frame->shape_style.outline_color.green, m_frame->shape_style.outline_color.blue), shape_outline_color_pgid)
+	UPDATESETTING(m_frame->shape_style.outline_opacity, shape_outline_opacity_pgid)
 
 }

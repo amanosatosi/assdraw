@@ -1,0 +1,60 @@
+name: Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test-package:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-wxwidgets3.2
+            mingw-w64-x86_64-agg
+      - name: Toolchain diagnostics
+        run: |
+          gcc --version
+          g++ --version
+          cmake --version
+          wx-config --version
+          pkg-config --modversion libagg
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
+      - name: Build
+        run: cmake --build build --verbose
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Package portable application
+        run: |
+          test -f build/assdraw.exe
+          mkdir -p artifact/ASSDraw
+          cp build/assdraw.exe artifact/ASSDraw/
+          ldd build/assdraw.exe | awk '/\/mingw64\/bin\// { print $3 }' | sort -u | xargs -r -I{} cp {} artifact/ASSDraw/
+          cp LICENSE NOTICE.md artifact/ASSDraw/
+          mkdir -p artifact/ASSDraw/licenses
+          for package in agg wxwidgets3.2; do
+            if [ -d "/mingw64/share/licenses/${package}" ]; then
+              cp -R "/mingw64/share/licenses/${package}" "artifact/ASSDraw/licenses/${package}"
+            fi
+          done
+          test -f artifact/ASSDraw/assdraw.exe
+          find artifact/ASSDraw -maxdepth 1 -type f -print
+      - name: Upload portable ASSDraw
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASSDraw-windows-x64
+          path: artifact/ASSDraw
+          if-no-files-found: error

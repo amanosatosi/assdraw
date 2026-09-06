@@ -59,6 +59,7 @@ void ASSDrawFrame::InitializeDefaultSettings()
 	behaviors.parse_spc = false;
 	behaviors.nosplashscreen = false;
 	behaviors.confirmquit = true;
+	shape_style = ShapeStyle();
 }
 
 void ASSDrawFrame::ApplySettings()
@@ -98,6 +99,7 @@ void ASSDrawFrame::ApplySettings()
 	shapelib->libarea->Refresh();
 
 	m_canvas->SetDrawCmdSet(behaviors.parse_spc? _T("m n l b s p c _"):_T("m n l b _"));
+	m_canvas->SetShapeStyle(shape_style);
 
 	UpdateASSCommandStringToSrcTxtCtrl(m_canvas->GenerateASS());
 }

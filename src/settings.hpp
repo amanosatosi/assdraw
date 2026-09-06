@@ -49,6 +49,7 @@ public:
 	virtual void Init();
 	virtual void OnSettingsApplyButtonClicked(wxCommandEvent &event);
 	virtual void OnSettingsRevertButtonClicked(wxCommandEvent &event);
+	virtual void OnSettingsPropertyChanged(wxPropertyGridEvent &event);
 	virtual void RefreshSettingsDisplay();
 
 	wxPGId colors_canvas_bg_pgid;
@@ -77,6 +78,13 @@ public:
 	wxPGId behaviors_parse_spc_pgid;
 	wxPGId behaviors_nosplashscreen_pgid;
 	wxPGId behaviors_confirmquit_pgid;
+	wxPGId shape_fill_enabled_pgid;
+	wxPGId shape_fill_color_pgid;
+	wxPGId shape_fill_opacity_pgid;
+	wxPGId shape_outline_enabled_pgid;
+	wxPGId shape_outline_width_pgid;
+	wxPGId shape_outline_color_pgid;
+	wxPGId shape_outline_opacity_pgid;
 
 	wxPropertyGrid *propgrid;
 	//DECLARE_EVENT_TABLE()

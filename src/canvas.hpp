@@ -39,6 +39,8 @@
 
 #include "engine.hpp"
 #include "enums.hpp"
+#include "drawing_history.hpp"
+#include "shape_style.hpp"
 
 #include <wx/dnd.h>
 #include <wx/splitter.h>
@@ -58,17 +60,7 @@ struct UndoRedo
 {
 	wxString cmds;
 	wxString desc;
-	double originx, originy, scale;
-
 	std::vector< bool > c1cont;
-	wxString bgimgfile;
-	wxRealPoint bgdisp, bgcenter;
-	double bgscale, bgalpha;
-
-	MODE draw_mode;
-	agg::path_storage backupcmds;
-	wxRealPoint rectbound[4], rectbound2[4], backup[4];
-	bool isshapetransformable;
 
 	void Import(ASSDrawCanvas *canvas, bool prestage, wxString cmds = _T(""));
 	void Export(ASSDrawCanvas *canvas);
@@ -90,6 +82,11 @@ public:
 	virtual void SetPreviewMode( bool mode );
 	virtual bool IsPreviewMode() { return preview_mode; }
 	virtual void ParseASS(wxString str, bool addundo = false);
+	virtual wxString GenerateASS() override;
+	virtual wxString GenerateDrawingASS();
+	virtual void SetShapeStyle(const ShapeStyle& new_style);
+	virtual const ShapeStyle& GetShapeStyle() const { return shape_style; }
+	virtual void ApplyShapeStyle();
 
 	virtual void SetDrawMode( MODE mode );
 	virtual MODE GetDrawMode() { return draw_mode; }
@@ -224,10 +221,11 @@ protected:
 		wxSlider* alpha_slider;
 	} bgimg;
 	
-	// Undo/redo system (simply stores the ASS commands)
-	std::list<UndoRedo> undos;
-	std::list<UndoRedo> redos;
+	// Undo/redo stores document geometry only. Reference images and view state
+	// intentionally do not participate in drawing undo/redo.
+	DrawingHistory<UndoRedo> history;
 	UndoRedo _undo;
+	ShapeStyle shape_style;
 
 	// last action and commands (for undo/redo system)
 	wxString undodesc;

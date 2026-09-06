@@ -46,6 +46,14 @@
 #include <wx/image.h>
 #include <wx/filename.h>
 
+namespace {
+agg::rgba ToAggColor(AssRgb color, std::uint8_t opacity)
+{
+	return agg::rgba(color.red / 255.0, color.green / 255.0,
+		color.blue / 255.0, opacity / 255.0);
+}
+}
+
 // ----------------------------------------------------------------------------
 // the main drawing canvas: ASSDrawCanvas
 // ----------------------------------------------------------------------------
@@ -100,6 +108,7 @@ ASSDrawCanvas::ASSDrawCanvas(wxWindow *parent, ASSDrawFrame *frame, int extrafla
 	rgba_origin = agg::rgba(0,0,0);
 	rgba_ruler_h = agg::rgba(0,0,1);
 	rgba_ruler_v = agg::rgba(1,0,0);
+	ApplyShapeStyle();
 
 	wxFlexGridSizer* sizer = new wxFlexGridSizer(1, 1, 0);
     sizer->AddGrowableRow(0);
@@ -149,9 +158,41 @@ void ASSDrawCanvas::ParseASS(wxString str, bool addundo)
 	if (addundo)
 		AddUndo(_T("Modify drawing commands"));
 
+	if (shape_style.ImportOverrideTags(std::string(str.mb_str(wxConvUTF8))))
+	{
+		m_frame->shape_style = shape_style;
+		if (m_frame->settingsdlg)
+			m_frame->settingsdlg->RefreshSettingsDisplay();
+	}
+	ApplyShapeStyle();
 	ASSDrawEngine::ParseASS(str);
 
 	RefreshUndocmds();
+}
+
+wxString ASSDrawCanvas::GenerateDrawingASS()
+{
+	return ASSDrawEngine::GenerateASS();
+}
+
+wxString ASSDrawCanvas::GenerateASS()
+{
+	return wxString(shape_style.SerializeOverrideTags().c_str(), wxConvUTF8) + _T("\n") + GenerateDrawingASS();
+}
+
+void ASSDrawCanvas::SetShapeStyle(const ShapeStyle& new_style)
+{
+	shape_style = new_style;
+	ApplyShapeStyle();
+	RefreshDisplay();
+}
+
+void ASSDrawCanvas::ApplyShapeStyle()
+{
+	// These colors are kept separate from editor guides, points, and handles.
+	rgba_shape_normal = ToAggColor(shape_style.fill_color,
+		shape_style.fill_enabled ? shape_style.fill_opacity : 0);
+	rgba_shape = rgba_shape_normal;
 }
 
 void ASSDrawCanvas::ResetEngine(bool addM)
@@ -1122,7 +1163,7 @@ void ASSDrawCanvas::EnforceC1Continuity (DrawCmd* cmd, Point* pnt)
 		theotherpoint = *it;
 		mainpoint = prevb->m_point;
 	}
-	else if (pnt->num = cmd->controlpoints.size())
+	else if (pnt->num == cmd->controlpoints.size())
 	{
 		DrawCmd_B *thisb = static_cast< DrawCmd_B* >(cmd);
 		if (!thisb->C1Cont) return;
@@ -1139,31 +1180,19 @@ void ASSDrawCanvas::EnforceC1Continuity (DrawCmd* cmd, Point* pnt)
 void ASSDrawCanvas::AddUndo( wxString desc )
 {
 	PrepareUndoRedo(_undo, false, _T(""), desc);
-	undos.push_back( _undo );
-	// also empty redos
-	redos.clear();
+	history.Push(_undo);
 	m_frame->UpdateUndoRedoMenu();
 }
 
 bool ASSDrawCanvas::UndoOrRedo(bool isundo)
 {
-	std::list<UndoRedo>* main = (isundo? &undos:&redos);
-	std::list<UndoRedo>* sub = (isundo? &redos:&undos);
-
-	if (main->empty())
+	UndoRedo current;
+	PrepareUndoRedo(current, true, GenerateDrawingASS(), _T(""));
+	UndoRedo restored;
+	const bool changed = isundo ? history.Undo(current, restored) : history.Redo(current, restored);
+	if (!changed)
 		return false;
-
-	UndoRedo r = main->back();
-	// push into sub
-	UndoRedo nr(r);
-	PrepareUndoRedo(nr, true, GenerateASS(), r.desc);
-	sub->push_back( nr );
-	// parse
-	r.Export(this);
-	// delete that
-	std::list<UndoRedo>::iterator iter = main->end();
-	iter--;
-	main->erase(iter);
+	restored.Export(this);
 
 	// reset some values before refreshing
 	mousedownAt_point = NULL;
@@ -1187,23 +1216,23 @@ bool ASSDrawCanvas::Redo()
 
 wxString ASSDrawCanvas::GetTopUndo()
 {
-	if (undos.empty())
+	if (!history.CanUndo())
 		return _T("");
 	else
-		return undos.back().desc;
+		return history.TopUndo().desc;
 }
 
 wxString ASSDrawCanvas::GetTopRedo()
 {
-	if (redos.empty())
+	if (!history.CanRedo())
 		return _T("");
 	else
-		return redos.back().desc;
+		return history.TopRedo().desc;
 }
 
 void ASSDrawCanvas::RefreshUndocmds()
 {
-	_undo.Import(this, true, GenerateASS());
+	_undo.Import(this, true, GenerateDrawingASS());
 }
 
 void ASSDrawCanvas::PrepareUndoRedo(UndoRedo& ur, bool prestage, wxString cmds, wxString desc)
@@ -1300,7 +1329,18 @@ void ASSDrawCanvas::DoDraw( RendererBase& rbase, RendererPrimitives& rprim, Rend
 		agg::render_scanlines_aa(rasterizer, scanline, rbase, bgimg.spanalloc, spangen);
 	}
 
-	ASSDrawEngine::Draw_Draw( rbase, rprim, rsolid, mtx, preview_mode? rgba_shape:rgba_shape_normal );
+	if (shape_style.fill_enabled)
+		ASSDrawEngine::Draw_Draw(rbase, rprim, rsolid, mtx,
+			ToAggColor(shape_style.fill_color, shape_style.fill_opacity));
+
+	if (shape_style.outline_enabled && shape_style.outline_width > 0.0)
+	{
+		rasterizer.reset();
+		agg::conv_stroke< agg::conv_curve< agg::conv_transform< agg::path_storage > > > shape_stroke(*rm_curve);
+		shape_stroke.width(shape_style.outline_width * pointsys->scale);
+		rasterizer.add_path(shape_stroke);
+		render_scanlines_aa_solid(rbase, ToAggColor(shape_style.outline_color, shape_style.outline_opacity));
+	}
 
 	if (!preview_mode)
 	{
@@ -1921,77 +1961,22 @@ void UndoRedo::Import(ASSDrawCanvas *canvas, bool prestage, wxString cmds)
 	if (prestage)
 	{
 		this->cmds = cmds;
-		this->backupcmds.free_all();
-		this->backupcmds.concat_path(canvas->backupcmds);
-		for (int i = 0; i < 4; i++)
-		{
-			this->rectbound[i] = canvas->rectbound[i];
-			this->rectbound2[i] = canvas->rectbound2[i];
-			this->backup[i] = canvas->backup[i];
-		}
-		this->isshapetransformable = canvas->isshapetransformable;
-	}
-	else
-	{
-	    this->originx = canvas->pointsys->originx;
-		this->originy = canvas->pointsys->originy;
-	    this->scale = canvas->pointsys->scale;
-
-		this->bgimgfile = canvas->bgimg.bgimgfile;
-		this->bgdisp = canvas->bgimg.disp;
-		this->bgcenter = canvas->bgimg.center;
-		this->bgscale = canvas->bgimg.scale;
-		this->bgalpha = canvas->bgimg.alpha;
 		this->c1cont = canvas->PrepareC1ContData();
-		this->draw_mode = canvas->draw_mode;
 	}
 }
 
 void UndoRedo::Export(ASSDrawCanvas *canvas)
 {
-	canvas->pointsys->originx = this->originx;
-	canvas->pointsys->originy = this->originy;
-	canvas->pointsys->scale = this->scale;
-	canvas->ParseASS( this->cmds );
+	canvas->ASSDrawEngine::ParseASS(this->cmds);
 	DrawCmdList::iterator it1 = canvas->cmds.begin();
 	std::vector< bool >::iterator it2 = this->c1cont.begin();
 	for(; it1 != canvas->cmds.end() && it2 != this->c1cont.end(); it1++, it2++)
 		if (*it2 && (*it1)->type == B)
 			static_cast<DrawCmd_B*>(*it1)->C1Cont = true;
 
-	if (canvas->bgimg.bgimgfile != this->bgimgfile)
-	{
-		canvas->RemoveBackgroundImage();
-		if (!this->bgimgfile.IsSameAs(_T("<clipboard>")) && ::wxFileExists(this->bgimgfile))
-		{
-			canvas->bgimg.alpha = this->bgalpha;
-			canvas->ReceiveBackgroundImageFileDropEvent(this->bgimgfile);
-		}
-	}
-	else
-	{
-		canvas->bgimg.new_scale = this->bgscale;
-		canvas->bgimg.new_center = this->bgcenter;
-		canvas->bgimg.new_disp = this->bgdisp;
-		canvas->bgimg.alpha = this->bgalpha;
-		canvas->UpdateBackgroundImgScalePosition();
-	}
-
-	canvas->draw_mode = this->draw_mode;
+	// Reference images and canvas view state are deliberately not restored.
 	if (canvas->IsTransformMode())
 	{
-		canvas->backupcmds.free_all();
-		canvas->backupcmds.concat_path(this->backupcmds);
-		for (int i = 0; i < 4; i++)
-		{
-			canvas->rectbound[i] = this->rectbound[i];
-			canvas->rectbound2[i] = this->rectbound2[i];
-			canvas->backup[i] = this->backup[i];
-		}
-		canvas->UpdateNonUniformTransformation();
-		canvas->InitiateDraggingIfTransformMode();
-		canvas->rectbound2upd = -1;
-		canvas->rectbound2upd2 = -1;
-		canvas->isshapetransformable = this->isshapetransformable;
+		canvas->SetDrawMode(canvas->draw_mode);
 	}
 }

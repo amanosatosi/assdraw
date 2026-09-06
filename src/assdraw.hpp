@@ -49,6 +49,7 @@
 #include "dlgctrl.hpp" // custom dialogs & controls
 #include "settings.hpp" // settings property grid
 #include "library.hpp" // shape library
+#include "shape_style.hpp"
 
 //#define BETAVERSION 2
 #define VERSION _T("3.0 final")
@@ -190,6 +191,8 @@ public:
 		bool nosplashscreen;
 		bool confirmquit;
 	} behaviors;
+
+	ShapeStyle shape_style;
 	
 	void LoadSettings();
 	void SaveSettings();
