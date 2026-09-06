@@ -23,14 +23,12 @@ jobs:
             mingw-w64-x86_64-ninja
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-wxwidgets3.2
-            mingw-w64-x86_64-agg
       - name: Toolchain diagnostics
         run: |
           gcc --version
           g++ --version
           cmake --version
           wx-config --version
-          pkg-config --modversion libagg
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
       - name: Build
@@ -45,7 +43,8 @@ jobs:
           ldd build/assdraw.exe | awk '/\/mingw64\/bin\// { print $3 }' | sort -u | xargs -r -I{} cp {} artifact/ASSDraw/
           cp LICENSE NOTICE.md artifact/ASSDraw/
           mkdir -p artifact/ASSDraw/licenses
-          for package in agg wxwidgets3.2; do
+          cp build/THIRD_PARTY_AGG_COPYING artifact/ASSDraw/licenses/AGG-COPYING
+          for package in wxwidgets3.2; do
             if [ -d "/mingw64/share/licenses/${package}" ]; then
               cp -R "/mingw64/share/licenses/${package}" "artifact/ASSDraw/licenses/${package}"
             fi

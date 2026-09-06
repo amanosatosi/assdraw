@@ -12,7 +12,8 @@ the corresponding GPL text or document the licensing relationship with the
 system `libagg` dependency; this repository records that fact rather than
 assigning a new licence to it.
 
-Portable Windows artifacts include this notice and `LICENSE`.  They link the
-MSYS2 `wxWidgets` and `agg` packages.  Their package-provided licence files
-remain available from the corresponding MSYS2 packages; the CI workflow does
-not claim to relicense them.
+The Windows build fetches the AGG 2.6 fork at commit
+`c4f36b4432142f22c0bf82c6fbdb41567a236be2`, whose upstream documentation says
+it is based on AGG 2.4 under the historical permissive AGG licensing.  Its
+`copying` file is included in portable artifacts.  This does not alter the GPL
+notices retained in ASSDraw's historical AGG-derived spline files.

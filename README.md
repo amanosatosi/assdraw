@@ -7,15 +7,17 @@ ASS editor.
 
 ## Windows builds
 
-The supported build is CMake with current MSYS2 MinGW-w64, wxWidgets 3.2, and
-Anti-Grain Geometry (`libagg`).  GitHub Actions is the authoritative compiler
-and test environment.  The Windows workflow installs those dependencies,
-configures CMake, builds, runs the non-interactive core tests, verifies
-`assdraw.exe`, and uploads `ASSDraw-windows-x64`.
+The supported build is CMake with current MSYS2 MinGW-w64 and wxWidgets 3.2.
+The renderer is the pinned AGG 2.6 source dependency declared in CMake; it is
+fetched and built by CMake rather than relying on an obsolete system package.
+GitHub Actions is the authoritative compiler and test environment. The Windows
+workflow installs dependencies, configures CMake, builds, runs the
+non-interactive core tests, verifies `assdraw.exe`, and uploads
+`ASSDraw-windows-x64`.
 
 For a local development environment (not required to use the CI artifacts),
 install the MSYS2 packages named in `.github/workflows/windows.yml`, then use
-CMake/Ninja in an MSYS2 MinGW64 shell.  Generated project files are not kept in
+CMake/Ninja in an MSYS2 MinGW64 shell. Generated project files are not kept in
 the repository; historical Autotools, Dev-C++, and Visual Studio project files
 remain only as reference.
 
