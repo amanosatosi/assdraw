@@ -128,7 +128,7 @@ void ASSDrawShapeLibrary::UpdatePreviewDisplays()
 	wxSize siz = GetClientSize();
 	int dim = siz.x - 15;
 	libarea->Show(false);
-	wxwxSizerItemListNode *node = sizer->GetChildren().GetFirst();
+	wxSizerItemList::compatibility_iterator node = sizer->GetChildren().GetFirst();
 	while (node != NULL)
 	{
 		ASSDrawShapePreview *shprvw = (ASSDrawShapePreview *) node->GetData()->GetWindow();
@@ -215,7 +215,7 @@ void ASSDrawShapeLibrary::SaveShapeFromCanvas(wxCommandEvent& WXUNUSED(event))
 void ASSDrawShapeLibrary::CheckUncheckAllPreviews(wxCommandEvent &event)
 {
 	bool checked = event.GetId() == TOOL_CHECK;
-	wxwxSizerItemListNode *node = sizer->GetChildren().GetFirst();
+	wxSizerItemList::compatibility_iterator node = sizer->GetChildren().GetFirst();
 	while (node != NULL)
 	{
 		ASSDrawShapePreview *shprvw = (ASSDrawShapePreview *) node->GetData()->GetWindow();
@@ -226,9 +226,10 @@ void ASSDrawShapeLibrary::CheckUncheckAllPreviews(wxCommandEvent &event)
 
 void ASSDrawShapeLibrary::DeleteChecked(wxCommandEvent& WXUNUSED(event))
 {
-	wxwxSizerItemListNode *node = sizer->GetChildren().GetFirst();
+	wxSizerItemList::compatibility_iterator node = sizer->GetChildren().GetFirst();
 	while (node != NULL)
 	{
+		wxSizerItemList::compatibility_iterator next = node->GetNext();
 		ASSDrawShapePreview *shprvw = (ASSDrawShapePreview *) node->GetData()->GetWindow();
 		if (shprvw->cb->GetValue())
 		{
@@ -236,7 +237,7 @@ void ASSDrawShapeLibrary::DeleteChecked(wxCommandEvent& WXUNUSED(event))
 			shprvw->Show(false);
 			shprvw->Destroy();
 		}
-		node = node->GetNext();
+		node = next;
 	}
 	UpdatePreviewDisplays();
 	Refresh();
@@ -245,7 +246,7 @@ void ASSDrawShapeLibrary::DeleteChecked(wxCommandEvent& WXUNUSED(event))
 std::vector< ASSDrawShapePreview *> ASSDrawShapeLibrary::GetShapePreviews()
 {
 	std::vector< ASSDrawShapePreview *> out;
-	wxwxSizerItemListNode *node = sizer->GetChildren().GetFirst();
+	wxSizerItemList::compatibility_iterator node = sizer->GetChildren().GetFirst();
 	while (node != NULL)
 	{
 		ASSDrawShapePreview *shprvw = (ASSDrawShapePreview *) node->GetData()->GetWindow();

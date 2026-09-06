@@ -247,12 +247,14 @@ void ASSDrawSettingsDialog::RefreshSettingsDisplay()
 	UPDATESETTING(m_frame->behaviors.parse_spc, behaviors_parse_spc_pgid)
 	UPDATESETTING(m_frame->behaviors.nosplashscreen, behaviors_nosplashscreen_pgid)
 	UPDATESETTING(m_frame->behaviors.confirmquit, behaviors_confirmquit_pgid)
+	wxColour fill_color(m_frame->shape_style.fill_color.red, m_frame->shape_style.fill_color.green, m_frame->shape_style.fill_color.blue);
+	wxColour outline_color(m_frame->shape_style.outline_color.red, m_frame->shape_style.outline_color.green, m_frame->shape_style.outline_color.blue);
 	UPDATESETTING(m_frame->shape_style.fill_enabled, shape_fill_enabled_pgid)
-	UPDATESETTING(wxColour(m_frame->shape_style.fill_color.red, m_frame->shape_style.fill_color.green, m_frame->shape_style.fill_color.blue), shape_fill_color_pgid)
+	UPDATESETTING(fill_color, shape_fill_color_pgid)
 	UPDATESETTING(m_frame->shape_style.fill_opacity, shape_fill_opacity_pgid)
 	UPDATESETTING(m_frame->shape_style.outline_enabled, shape_outline_enabled_pgid)
 	UPDATESETTING(m_frame->shape_style.outline_width, shape_outline_width_pgid)
-	UPDATESETTING(wxColour(m_frame->shape_style.outline_color.red, m_frame->shape_style.outline_color.green, m_frame->shape_style.outline_color.blue), shape_outline_color_pgid)
+	UPDATESETTING(outline_color, shape_outline_color_pgid)
 	UPDATESETTING(m_frame->shape_style.outline_opacity, shape_outline_opacity_pgid)
 
 }
