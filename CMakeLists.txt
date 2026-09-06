@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(ASSDraw VERSION 3.1.0 LANGUAGES CXX)
 
 include(CTest)
-find_package(wxWidgets 3.2 REQUIRED COMPONENTS core base aui propgrid)
+find_package(wxWidgets 3.2 REQUIRED COMPONENTS core base aui propgrid html)
 include(${wxWidgets_USE_FILE})
 
 # MSYS2 no longer packages the historical libagg dependency. Keep the

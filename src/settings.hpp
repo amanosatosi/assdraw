@@ -33,7 +33,7 @@
 
 class ASSDrawFrame;
 
-DECLARE_EVENT_TYPE(wxEVT_SETTINGS_CHANGED, -1)
+wxDECLARE_EVENT(wxEVT_SETTINGS_CHANGED, wxCommandEvent);
 
 typedef wxPGProperty* wxPGId;
 

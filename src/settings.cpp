@@ -36,7 +36,7 @@
 #include "assdraw.hpp"
 #include "settings.hpp"
 
-DEFINE_EVENT_TYPE(wxEVT_SETTINGS_CHANGED)
+wxDEFINE_EVENT(wxEVT_SETTINGS_CHANGED, wxCommandEvent);
 
 // ----------------------------------------------------------------------------
 // ASSDrawSettingsDialog
