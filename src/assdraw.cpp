@@ -38,7 +38,6 @@
 #include "enums.hpp"
 #include "include_once.hpp"
 #include <wx/clipbrd.h>
-#include <wx/dcmemory.h>
 #include <wx/wfstream.h>
 #include <wx/filename.h>
 #include <wx/dynlib.h>
@@ -47,27 +46,6 @@
 #if !defined(__WINDOWS__)
 #include "xpm/res.h"
 #endif
-
-namespace {
-wxBitmap CreateColoringToolBitmap()
-{
-	wxBitmap bitmap(16, 16);
-	wxMemoryDC dc(bitmap);
-	dc.SetBackground(*wxWHITE_BRUSH);
-	dc.Clear();
-	dc.SetPen(*wxBLACK_PEN);
-	dc.SetBrush(wxBrush(wxColour(72, 133, 237)));
-	dc.DrawEllipse(1, 1, 11, 11);
-	dc.SetBrush(wxBrush(wxColour(245, 166, 35)));
-	dc.DrawCircle(5, 5, 2);
-	dc.SetBrush(wxBrush(wxColour(52, 168, 83)));
-	dc.DrawCircle(8, 7, 2);
-	dc.SetPen(wxPen(wxColour(80, 80, 80), 2));
-	dc.DrawLine(9, 10, 15, 15);
-	dc.SelectObject(wxNullBitmap);
-	return bitmap;
-}
-}
 
 /////////////
 // Libraries
@@ -259,6 +237,8 @@ void ASSDrawFrame::SetToolBars()
 	drawtbar->AddTool(TB_CLEAR, _T("Clear"), wxBITMAP(new_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_CLEAR);
     //tbar->AddTool(TB_EDITSRC, _T("Source"), wxBITMAP(src_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_EDITSRC);
     drawtbar->AddCheckTool(TB_PREVIEW, _T("Preview"), wxBITMAP(preview_), wxNullBitmap, _T(""), TIPS_PREVIEW);
+	drawtbar->AddTool(MODE_COLOR, _T("Coloring"), wxBITMAP(src_), wxNullBitmap, wxITEM_NORMAL, _T(""),
+		_T("Select a shape, then double-click it to choose its fill color"));
     //drawtbar->AddTool(TB_TRANSFORM, _T("Transform"), wxBITMAP(rot_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_TRANSFORM);
 	zoomslider = new wxSlider(drawtbar, TB_ZOOMSLIDER, 1000, 100, 5000, __DPDS__ );
 	//zoomslider->SetSize(280, zoomslider->GetSize().y);
@@ -286,7 +266,7 @@ void ASSDrawFrame::SetToolBars()
     modetbar->AddRadioTool(MODE_DEL, _T("Delete"), wxBITMAP(del_), wxNullBitmap, _T(""), TIPS_DEL);
     modetbar->AddRadioTool(MODE_SCALEROTATE, _T("Scale/Rotate"), wxBITMAP(sc_rot_), wxNullBitmap, _T(""), TIPS_SCALEROTATE);
     modetbar->AddRadioTool(MODE_NUT_BILINEAR, _T("Bilinear"), wxBITMAP(nut_), wxNullBitmap, _T(""), TIPS_NUTB);
-	modetbar->AddRadioTool(MODE_COLOR, _T("Coloring"), CreateColoringToolBitmap(), wxNullBitmap, _T(""),
+	modetbar->AddRadioTool(MODE_COLOR, _T("Coloring"), wxBITMAP(src_), wxNullBitmap, _T(""),
 		_T("Click a filled shape to select it; double-click to choose its fill color"));
     //modetbar->AddRadioTool(MODE_NUT_PERSPECTIVE, _T("NUT:P"), wxBITMAP(arr_), wxNullBitmap, _T(""), _T(""));
     modetbar->Realize();
