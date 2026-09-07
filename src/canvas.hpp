@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include "engine.hpp"
@@ -67,6 +68,17 @@ struct UndoRedo
 	
 };
 
+// A visible ASS drawing component. `commands` contains the outer contour and
+// directly nested, oppositely-wound hole contours, which must share an ASS
+// drawing run to preserve their fill relationship.
+struct StyledSubshape
+{
+	DrawCmd* start_command = NULL;
+	std::vector<DrawCmd*> commands;
+	std::vector< std::vector<wxRealPoint> > contours;
+	ShapeStyle style;
+};
+
 // for multiple point selection
 enum SELECTMODE { NEW, ADD, DEL };
 
@@ -84,6 +96,11 @@ public:
 	virtual void ParseASS(wxString str, bool addundo = false);
 	virtual wxString GenerateASS() override;
 	virtual wxString GenerateDrawingASS();
+	using ASSDrawEngine::AppendCmd;
+	using ASSDrawEngine::InsertCmd;
+	virtual DrawCmd* AppendCmd(DrawCmd* cmd) override;
+	virtual void InsertCmd(DrawCmd* cmd, DrawCmd* after) override;
+	virtual bool DeleteCommand(DrawCmd* cmd) override;
 	virtual void SetShapeStyle(const ShapeStyle& new_style);
 	virtual const ShapeStyle& GetShapeStyle() const { return shape_style; }
 	virtual void ApplyShapeStyle();
@@ -227,6 +244,7 @@ protected:
 	DrawingHistory<UndoRedo> history;
 	UndoRedo _undo;
 	ShapeStyle shape_style;
+	std::map<DrawCmd*, ShapeStyle> subshape_styles;
 
 	// last action and commands (for undo/redo system)
 	wxString undodesc;
@@ -251,8 +269,12 @@ protected:
 	// the interactive target shrink to less than a pixel when zoomed out.
 	virtual Point* FindPointAtScreenPosition(const wxPoint& position, bool control_point) const;
 	virtual bool IsScreenPositionInFilledShape(const wxPoint& position) const;
+	virtual DrawCmd* FindSubshapeAtScreenPosition(const wxPoint& position) const;
 	virtual void SelectColoringTarget(const wxPoint& position);
 	virtual void ShowColorSelector();
+	virtual std::vector<StyledSubshape> BuildStyledSubshapes() const;
+	virtual ShapeStyle GetSubshapeStyle(DrawCmd* start_command) const;
+	virtual void SetSubshapeStyle(DrawCmd* start_command, const ShapeStyle& style);
 
 	// selects all points within (lx, ty) , (rx, by) returns # of selected points
 	virtual int SelectPointsWithin( int lx, int rx, int ty, int by, SELECTMODE smode = NEW );
@@ -271,6 +293,7 @@ protected:
 	wxRealPoint rectbound[4], rectbound2[4], backup[4], rectcenter;
 	bool isshapetransformable;
 	bool coloring_target_selected;
+	DrawCmd* coloring_target_shape;
 
 	// do the real drawing
 	virtual void DoDraw( RendererBase& rbase, RendererPrimitives& rprim, RendererSolid& rsolid, agg::trans_affine& mtx );

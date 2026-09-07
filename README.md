@@ -40,7 +40,10 @@ so formatted command text cannot join and corrupt adjacent draw commands.
 oppositely-wound hole is not selectable). Double-click the selected area to
 open the native Windows color selector for the fill. This changes `\1c` only:
 ASS drawing coordinates are unchanged, although an enabled `\bord` naturally
-extends pixels around the same coordinates.
+extends pixels around the same coordinates. Each separate visible sub-shape
+has its own fill/outline style and is exported as its own complete ASS drawing
+run; directly nested reverse-winding contours remain attached to their outer
+sub-shape as holes.
 
 Drawing undo history now contains only drawing/document state.  Background
 image identity, placement, scale, and opacity are reference/view state, so
