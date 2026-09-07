@@ -38,6 +38,7 @@
 #include "enums.hpp"
 #include "include_once.hpp"
 #include <wx/clipbrd.h>
+#include <wx/artprov.h>
 #include <wx/wfstream.h>
 #include <wx/filename.h>
 #include <wx/dynlib.h>
@@ -73,7 +74,7 @@ BEGIN_EVENT_TABLE(ASSDrawFrame, wxFrame)
     EVT_TOOL(TB_CLEAR, ASSDrawFrame::OnSelect_Clear)
     EVT_TOOL(TB_PREVIEW, ASSDrawFrame::OnSelect_Preview)
     EVT_TOOL(TB_TRANSFORM, ASSDrawFrame::OnSelect_Transform)
-    EVT_TOOL_RANGE(MODE_ARR, MODE_DEL, ASSDrawFrame::OnChoose_Mode)
+    EVT_TOOL_RANGE(MODE_ARR, MODE_COLOR, ASSDrawFrame::OnChoose_Mode)
     EVT_TOOL_RCLICKED(wxID_ANY, ASSDrawFrame::OnToolRClick)
     EVT_COMMAND(wxID_ANY, wxEVT_SETTINGS_CHANGED, ASSDrawFrame::OnSettingsChanged)
     EVT_MENU_RANGE(MENU_TB_ALL, MENU_TB_BGIMG, ASSDrawFrame::OnChoose_TBarRClickMenu)
@@ -90,7 +91,7 @@ BEGIN_EVENT_TABLE(ASSDrawFrame, wxFrame)
     EVT_MENU(MENU_PASTE, ASSDrawFrame::OnSelect_Paste)
     EVT_MENU(MENU_BGIMG_REMOVE, ASSDrawFrame::OnSelect_RemoveBG)
     EVT_MENU(MENU_BGIMG_ALPHA, ASSDrawFrame::OnSelect_AlphaBG)
-    EVT_MENU_RANGE(MODE_ARR, MODE_NUT_BILINEAR, ASSDrawFrame::OnChoose_Mode)
+    EVT_MENU_RANGE(MODE_ARR, MODE_COLOR, ASSDrawFrame::OnChoose_Mode)
     EVT_MENU_RANGE(MENU_REPOS_TOPLEFT, MENU_REPOS_BOTRIGHT, ASSDrawFrame::OnChoose_Recenter)
     EVT_MENU_RANGE(MENU_REPOS_BGTOPLEFT, MENU_REPOS_BGBOTRIGHT, ASSDrawFrame::OnChoose_RecenterToBG)
 	EVT_CLOSE(ASSDrawFrame::OnClose)
@@ -166,8 +167,17 @@ ASSDrawFrame::ASSDrawFrame( wxApp *app, const wxString& title, const wxPoint& po
 	// shapes library
 	shapelib = new ASSDrawShapeLibrary(this, this);
 
-	// source text ctrl
-	srctxtctrl = new ASSDrawSrcTxtCtrl(this, this);
+	// Source text control and a direct clipboard action for generated ASS.
+	commandpanel = new wxPanel(this, wxID_ANY);
+	srctxtctrl = new ASSDrawSrcTxtCtrl(commandpanel, this);
+	wxButton* copy_button = new wxButton(commandpanel, wxID_COPY, _T("Copy ASS"));
+	copy_button->SetMinSize(wxSize(128, -1));
+	copy_button->SetToolTip(_T("Copy the command text, including ASS style tags"));
+	copy_button->Bind(wxEVT_BUTTON, &ASSDrawFrame::OnSelect_CopyCommands, this);
+	wxBoxSizer* command_sizer = new wxBoxSizer(wxHORIZONTAL);
+	command_sizer->Add(srctxtctrl, 1, wxEXPAND | wxALL, 3);
+	command_sizer->Add(copy_button, 0, wxEXPAND | wxTOP | wxRIGHT | wxBOTTOM, 3);
+	commandpanel->SetSizer(command_sizer);
 
 	// settings
 	settingsdlg = new ASSDrawSettingsDialog(this, this);
@@ -255,6 +265,9 @@ void ASSDrawFrame::SetToolBars()
     modetbar->AddRadioTool(MODE_DEL, _T("Delete"), wxBITMAP(del_), wxNullBitmap, _T(""), TIPS_DEL);
     modetbar->AddRadioTool(MODE_SCALEROTATE, _T("Scale/Rotate"), wxBITMAP(sc_rot_), wxNullBitmap, _T(""), TIPS_SCALEROTATE);
     modetbar->AddRadioTool(MODE_NUT_BILINEAR, _T("Bilinear"), wxBITMAP(nut_), wxNullBitmap, _T(""), TIPS_NUTB);
+	modetbar->AddRadioTool(MODE_COLOR, _T("Coloring"),
+		wxArtProvider::GetBitmap(wxART_TIP, wxART_TOOLBAR), wxNullBitmap, _T(""),
+		_T("Click a filled shape to select it; double-click to choose its fill color"));
     //modetbar->AddRadioTool(MODE_NUT_PERSPECTIVE, _T("NUT:P"), wxBITMAP(arr_), wxNullBitmap, _T(""), _T(""));
     modetbar->Realize();
 
@@ -295,6 +308,7 @@ void ASSDrawFrame::SetMenus()
 	modeMenu->Append(MODE_DEL, _T("&Delete\tF5"), TIPS_DEL, wxITEM_RADIO);
 	modeMenu->Append(MODE_SCALEROTATE, _T("&Scale/Rotate\tF6"), TIPS_NUTB, wxITEM_RADIO);
 	modeMenu->Append(MODE_NUT_BILINEAR, _T("&Bilinear transformation\tF7"), TIPS_SCALEROTATE, wxITEM_RADIO);
+	modeMenu->Append(MODE_COLOR, _T("&Coloring"), _T("Click a filled shape to select it; double-click to choose its fill color"), wxITEM_RADIO);
 
 	bgimgMenu = new wxMenu;
 	bgimgMenu->Append(DRAG_DWG, _T("Pan/Zoom &Drawing\tShift+F1"), TIPS_DWG, wxITEM_CHECK);
@@ -358,8 +372,8 @@ void ASSDrawFrame::SetPanes()
 
 	m_mgr.AddPane(m_canvas, wxAuiPaneInfo().Name(_T("canvas")).CenterPane());
 
-	m_mgr.AddPane(srctxtctrl, wxAuiPaneInfo().Name(_T("commands")).Caption(_T("Drawing commands")).
-                  Bottom().Layer(1).CloseButton(false).BestSize(wxSize(320, 48)));
+	m_mgr.AddPane(commandpanel, wxAuiPaneInfo().Name(_T("commands")).Caption(_T("Drawing commands")).
+			  Bottom().Layer(1).CloseButton(false).BestSize(wxSize(420, 58)));
 
 	if (settingsdlg)
 		m_mgr.AddPane(settingsdlg, wxAuiPaneInfo().Name(_T("settings")).Caption(_T("Settings")).
@@ -644,6 +658,15 @@ void ASSDrawFrame::UpdateASSCommandStringFromSrcTxtCtrl(wxString cmds)
 {
 	m_canvas->ParseASS(cmds, true);
 	m_canvas->RefreshDisplay();
+}
+
+void ASSDrawFrame::OnSelect_CopyCommands(wxCommandEvent& WXUNUSED(event))
+{
+	if (!wxTheClipboard->Open())
+		return;
+	wxTheClipboard->SetData(new wxTextDataObject(srctxtctrl->GetValue()));
+	wxTheClipboard->Close();
+	SetStatusText(_T("ASS drawing copied to clipboard."), 1);
 }
 
 void ASSDrawFrame::UpdateASSCommandStringToSrcTxtCtrl(wxString cmd)

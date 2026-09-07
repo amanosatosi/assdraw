@@ -100,6 +100,7 @@ public:
     virtual void OnMouseMove(wxMouseEvent &event);
     virtual void OnMouseLeftUp(wxMouseEvent &event);
     virtual void OnMouseLeftDown(wxMouseEvent &event);
+	virtual void OnMouseLeftDClick(wxMouseEvent &event);
     virtual void OnMouseRightUp(wxMouseEvent &event);
     virtual void OnMouseRightDown(wxMouseEvent &event);
     virtual void OnMouseRightDClick(wxMouseEvent &event);
@@ -249,6 +250,9 @@ protected:
 	// ASSDrawEngine::PointAt/ControlAt: their draw-coordinate comparison makes
 	// the interactive target shrink to less than a pixel when zoomed out.
 	virtual Point* FindPointAtScreenPosition(const wxPoint& position, bool control_point) const;
+	virtual bool IsScreenPositionInFilledShape(const wxPoint& position) const;
+	virtual void SelectColoringTarget(const wxPoint& position);
+	virtual void ShowColorSelector();
 
 	// selects all points within (lx, ty) , (rx, by) returns # of selected points
 	virtual int SelectPointsWithin( int lx, int rx, int ty, int by, SELECTMODE smode = NEW );
@@ -266,6 +270,7 @@ protected:
 	int rectbound2upd, rectbound2upd2;
 	wxRealPoint rectbound[4], rectbound2[4], backup[4], rectcenter;
 	bool isshapetransformable;
+	bool coloring_target_selected;
 
 	// do the real drawing
 	virtual void DoDraw( RendererBase& rbase, RendererPrimitives& rprim, RendererSolid& rsolid, agg::trans_affine& mtx );

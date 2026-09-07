@@ -32,6 +32,16 @@ background-image loading, placement, scaling, opacity, and the command-text
 clipboard workflow.  Point and Bezier-handle markers, including their drag
 targets, retain a usable on-screen size when the canvas is zoomed out.
 
+The **Drawing commands** pane has a direct **Copy ASS** action. Pressing Enter
+in the pane applies its contents; newlines and tabs are treated as whitespace,
+so formatted command text cannot join and corrupt adjacent draw commands.
+
+**Coloring** mode selects only a filled area of the current drawing (an
+oppositely-wound hole is not selectable). Double-click the selected area to
+open the native Windows color selector for the fill. This changes `\1c` only:
+ASS drawing coordinates are unchanged, although an enabled `\bord` naturally
+extends pixels around the same coordinates.
+
 Drawing undo history now contains only drawing/document state.  Background
 image identity, placement, scale, and opacity are reference/view state, so
 normal Ctrl+Z/Ctrl+Y cannot reload or move a tracing image.  Canvas view state

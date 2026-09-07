@@ -43,6 +43,7 @@
 
 #include "agghelper.hpp"
 #include <math.h>
+#include <wx/colordlg.h>
 #include <wx/image.h>
 #include <wx/filename.h>
 
@@ -76,6 +77,7 @@ BEGIN_EVENT_TABLE(ASSDrawCanvas, ASSDrawEngine)
     EVT_MOTION (ASSDrawCanvas::OnMouseMove)
     EVT_LEFT_UP(ASSDrawCanvas::OnMouseLeftUp)
     EVT_LEFT_DOWN(ASSDrawCanvas::OnMouseLeftDown)
+	EVT_LEFT_DCLICK(ASSDrawCanvas::OnMouseLeftDClick)
     EVT_RIGHT_UP(ASSDrawCanvas::OnMouseRightUp)
     EVT_RIGHT_DOWN(ASSDrawCanvas::OnMouseRightDown)
     EVT_RIGHT_DCLICK(ASSDrawCanvas::OnMouseRightDClick)
@@ -112,6 +114,7 @@ ASSDrawCanvas::ASSDrawCanvas(wxWindow *parent, ASSDrawFrame *frame, int extrafla
 	bgimg.bgimg = NULL;
 	bgimg.alpha = 0.5;
 	rectbound2upd = -1, rectbound2upd2 = -1;
+	coloring_target_selected = false;
 
 	rgba_shape_normal = agg::rgba(0,0,1,0.5);
 	rgba_outline = agg::rgba(0,0,0);
@@ -254,6 +257,8 @@ void ASSDrawCanvas::RefreshDisplay()
 void ASSDrawCanvas::SetDrawMode( MODE mode )
 {
 	draw_mode = mode;
+	if (draw_mode != MODE_COLOR)
+		coloring_target_selected = false;
 
 	if (!selected_points.empty())
 		ClearPointsSelection();
@@ -375,6 +380,121 @@ Point* ASSDrawCanvas::FindPointAtScreenPosition(const wxPoint& position, bool co
 	}
 
 	return closest_point;
+}
+
+bool ASSDrawCanvas::IsScreenPositionInFilledShape(const wxPoint& position) const
+{
+	if (pointsys->scale <= 0.0)
+		return false;
+
+	const wxRealPoint click((position.x - pointsys->originx) / pointsys->scale,
+		(position.y - pointsys->originy) / pointsys->scale);
+	int winding = 0;
+	std::vector<wxRealPoint> contour;
+
+	auto add_contour_winding = [&]() {
+		if (contour.size() < 3)
+			return;
+
+		for (std::size_t index = 0; index < contour.size(); ++index)
+		{
+			const wxRealPoint& from = contour[index];
+			const wxRealPoint& to = contour[(index + 1) % contour.size()];
+			const double side = (to.x - from.x) * (click.y - from.y) -
+				(to.y - from.y) * (click.x - from.x);
+			if (from.y <= click.y)
+			{
+				if (to.y > click.y && side > 0.0)
+					++winding;
+			}
+			else if (to.y <= click.y && side < 0.0)
+			{
+				--winding;
+			}
+		}
+	};
+
+	for (DrawCmdList::const_iterator command = cmds.begin(); command != cmds.end(); ++command)
+	{
+		DrawCmd* current = *command;
+		if (current->type == M)
+		{
+			add_contour_winding();
+			contour.clear();
+			contour.push_back(wxRealPoint(current->m_point->x(), current->m_point->y()));
+			continue;
+		}
+
+		if (contour.empty())
+			continue;
+
+		if (current->type == B && current->initialized && current->controlpoints.size() == 2)
+		{
+			PointList::const_iterator controls = current->controlpoints.begin();
+			const wxRealPoint p0 = contour.back();
+			const wxRealPoint p1((*controls)->x(), (*controls)->y());
+			++controls;
+			const wxRealPoint p2((*controls)->x(), (*controls)->y());
+			const wxRealPoint p3(current->m_point->x(), current->m_point->y());
+			for (int step = 1; step <= 16; ++step)
+			{
+				const double t = step / 16.0;
+				const double inverse = 1.0 - t;
+				contour.push_back(wxRealPoint(
+					inverse * inverse * inverse * p0.x + 3.0 * inverse * inverse * t * p1.x +
+					3.0 * inverse * t * t * p2.x + t * t * t * p3.x,
+					inverse * inverse * inverse * p0.y + 3.0 * inverse * inverse * t * p1.y +
+					3.0 * inverse * t * t * p2.y + t * t * t * p3.y));
+			}
+		}
+		else
+		{
+			// Spline control points provide a conservative pick approximation.
+			if (current->type == S)
+			{
+				for (PointList::const_iterator control = current->controlpoints.begin();
+					control != current->controlpoints.end(); ++control)
+					contour.push_back(wxRealPoint((*control)->x(), (*control)->y()));
+			}
+			contour.push_back(wxRealPoint(current->m_point->x(), current->m_point->y()));
+		}
+	}
+	add_contour_winding();
+
+	// AGG's path rasterizer uses the non-zero winding fill rule. An
+	// oppositely-wound inner contour is therefore a hole and is not selectable.
+	return winding != 0;
+}
+
+void ASSDrawCanvas::SelectColoringTarget(const wxPoint& position)
+{
+	coloring_target_selected = IsScreenPositionInFilledShape(position);
+	if (coloring_target_selected)
+		m_frame->SetStatusText(_T("Shape selected. Double-click to choose its fill color."), 1);
+	else
+		m_frame->SetStatusText(_T("Click a filled part of the shape (not a hole)."), 1);
+	RefreshDisplay();
+}
+
+void ASSDrawCanvas::ShowColorSelector()
+{
+	wxColourData color_data;
+	color_data.SetChooseFull(true);
+	color_data.SetColour(wxColour(shape_style.fill_color.red, shape_style.fill_color.green,
+		shape_style.fill_color.blue));
+	wxColourDialog dialog(m_frame, &color_data);
+	dialog.SetTitle(_T("Choose fill color"));
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	const wxColour color = dialog.GetColourData().GetColour();
+	ShapeStyle style = shape_style;
+	style.fill_enabled = true;
+	style.fill_color = { color.Red(), color.Green(), color.Blue() };
+	m_frame->shape_style = style;
+	SetShapeStyle(style);
+	if (m_frame->settingsdlg)
+		m_frame->settingsdlg->RefreshSettingsDisplay();
 }
 
 // Do the dragging
@@ -705,6 +825,19 @@ void ASSDrawCanvas::OnMouseLeftUp(wxMouseEvent& event)
 	event.Skip( true );
 }
 
+void ASSDrawCanvas::OnMouseLeftDClick(wxMouseEvent& event)
+{
+	if (draw_mode != MODE_COLOR)
+	{
+		event.Skip();
+		return;
+	}
+
+	SelectColoringTarget(event.GetPosition());
+	if (coloring_target_selected)
+		ShowColorSelector();
+}
+
 void ASSDrawCanvas::ProcessOnMouseLeftUp()
 {
 	if (!capturemouse_left) return;
@@ -805,6 +938,11 @@ void ASSDrawCanvas::OnMouseLeftDown(wxMouseEvent& event)
 		return;
 
 	wxPoint q = event.GetPosition();
+	if (draw_mode == MODE_COLOR)
+	{
+		SelectColoringTarget(q);
+		return;
+	}
 
 	// wxPoint to Point
 	int px, py;
@@ -1401,6 +1539,15 @@ void ASSDrawCanvas::DoDraw( RendererBase& rbase, RendererPrimitives& rprim, Rend
 		shape_stroke.width(shape_style.outline_width * pointsys->scale);
 		rasterizer.add_path(shape_stroke);
 		render_scanlines_aa_solid(rbase, ToAggColor(shape_style.outline_color, shape_style.outline_opacity));
+	}
+
+	if (draw_mode == MODE_COLOR && coloring_target_selected)
+	{
+		rasterizer.reset();
+		agg::conv_stroke< agg::conv_curve< agg::conv_transform< agg::path_storage > > > selection_stroke(*rm_curve);
+		selection_stroke.width(2.0);
+		rasterizer.add_path(selection_stroke);
+		render_scanlines_aa_solid(rbase, rgba_selectpoint);
 	}
 
 	if (!preview_mode)

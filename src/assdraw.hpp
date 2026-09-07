@@ -96,6 +96,7 @@ public:
 	void OnToolRClick(wxCommandEvent& event);
 	void OnChoose_TBarRClickMenu(wxCommandEvent& event);
 	void OnSettingsChanged(wxCommandEvent& event);
+	void OnSelect_CopyCommands(wxCommandEvent& WXUNUSED(event));
 	void OnClose(wxCloseEvent &event);
 
 	void UpdateASSCommandStringToSrcTxtCtrl(wxString cmds);
@@ -122,6 +123,7 @@ public:
 	wxAuiManager m_mgr;
 	wxString default_perspective;
 	ASSDrawSrcTxtCtrl* srctxtctrl;
+	wxPanel* commandpanel;
 
 	// config
 	wxString configfile;

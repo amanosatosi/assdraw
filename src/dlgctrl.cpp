@@ -67,7 +67,7 @@ void ASSDrawSrcTxtCtrl::CustomOnChar(wxKeyEvent &event)
 	{
 	case WXK_RETURN:
 		m_frame->UpdateASSCommandStringFromSrcTxtCtrl(GetValue());
-		break;
+		return; // Enter applies; it must not also insert a line break.
 	case WXK_TAB:
 		break; //do nothing
 	default:

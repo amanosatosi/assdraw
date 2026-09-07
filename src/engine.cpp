@@ -153,9 +153,15 @@ ASSDrawEngine::~ASSDrawEngine()
 int ASSDrawEngine::ParseASS ( wxString str )
 {
 	ResetEngine( false );
-	str.Replace(_T("\t"), _T(""));
-	str.Replace(_T("\r"), _T(""));
-	str.Replace(_T("\n"), _T(""));
+	// The command pane is multiline and generated ASS places the override
+	// block on its own line. Whitespace must separate tokens; deleting it
+	// joins (for example) "}" and "m" into an invalid command token.
+	str.Replace(_T("\t"), _T(" "));
+	str.Replace(_T("\r"), _T(" "));
+	str.Replace(_T("\n"), _T(" "));
+	// A normal ASS override block may be directly adjacent to its first draw
+	// command ("{\\p1}m ..."), so make that boundary tokenizable as well.
+	str.Replace(_T("}"), _T("} "));
 	str = str.Lower() + _T(" _ _");
 	// we don't use regex because the pattern is too simple
 	wxStringTokenizer tkz( str, _T(" ") );
