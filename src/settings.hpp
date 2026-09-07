@@ -50,6 +50,7 @@ public:
 	virtual void OnSettingsApplyButtonClicked(wxCommandEvent &event);
 	virtual void OnSettingsRevertButtonClicked(wxCommandEvent &event);
 	virtual void OnSettingsPropertyChanged(wxPropertyGridEvent &event);
+	virtual void ApplyShapeProperties();
 	virtual void RefreshSettingsDisplay();
 
 	wxPGId colors_canvas_bg_pgid;

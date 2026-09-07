@@ -182,19 +182,7 @@ void ASSDrawSettingsDialog::OnSettingsApplyButtonClicked(wxCommandEvent &event)
 	PARSE(&m_frame->behaviors.nosplashscreen, behaviors_nosplashscreen_pgid)
 	PARSE(&m_frame->behaviors.confirmquit, behaviors_confirmquit_pgid)
 
-	PARSE(&m_frame->shape_style.fill_enabled, shape_fill_enabled_pgid)
-	PARSE(&m_frame->shape_style.outline_enabled, shape_outline_enabled_pgid)
-	long shape_opacity = 255;
-	PARSE(&shape_opacity, shape_fill_opacity_pgid)
-	m_frame->shape_style.fill_opacity = static_cast<std::uint8_t>(shape_opacity);
-	PARSE(&shape_opacity, shape_outline_opacity_pgid)
-	m_frame->shape_style.outline_opacity = static_cast<std::uint8_t>(shape_opacity);
-	m_frame->shape_style.outline_width = propgrid->GetPropertyValue(shape_outline_width_pgid).GetDouble();
-	wxColour shape_color;
-	PARSECOLOR(shape_color, shape_fill_color_pgid)
-	m_frame->shape_style.fill_color = { shape_color.Red(), shape_color.Green(), shape_color.Blue() };
-	PARSECOLOR(shape_color, shape_outline_color_pgid)
-	m_frame->shape_style.outline_color = { shape_color.Red(), shape_color.Green(), shape_color.Blue() };
+	ApplyShapeProperties();
 
 	wxCommandEvent evento( wxEVT_SETTINGS_CHANGED, event.GetId() );
 	evento.SetEventObject(event_object);
@@ -204,7 +192,35 @@ void ASSDrawSettingsDialog::OnSettingsApplyButtonClicked(wxCommandEvent &event)
 
 void ASSDrawSettingsDialog::OnSettingsPropertyChanged(wxPropertyGridEvent &event)
 {
-	OnSettingsApplyButtonClicked(event);
+	wxPGProperty* property = event.GetProperty();
+	if (property == shape_fill_enabled_pgid || property == shape_fill_color_pgid ||
+		property == shape_fill_opacity_pgid || property == shape_outline_enabled_pgid ||
+		property == shape_outline_width_pgid || property == shape_outline_color_pgid ||
+		property == shape_outline_opacity_pgid)
+	{
+		ApplyShapeProperties();
+	}
+}
+
+void ASSDrawSettingsDialog::ApplyShapeProperties()
+{
+	if (propgrid == NULL || m_frame->m_canvas == NULL)
+		return;
+
+	ShapeStyle style = m_frame->shape_style;
+	style.fill_enabled = propgrid->GetPropertyValue(shape_fill_enabled_pgid).GetBool();
+	style.fill_opacity = static_cast<std::uint8_t>(propgrid->GetPropertyValue(shape_fill_opacity_pgid).GetLong());
+	style.outline_enabled = propgrid->GetPropertyValue(shape_outline_enabled_pgid).GetBool();
+	style.outline_width = propgrid->GetPropertyValue(shape_outline_width_pgid).GetDouble();
+	style.outline_opacity = static_cast<std::uint8_t>(propgrid->GetPropertyValue(shape_outline_opacity_pgid).GetLong());
+
+	wxColour fill_color = *wxGetVariantCast(propgrid->GetPropertyValue(shape_fill_color_pgid), wxColour);
+	wxColour outline_color = *wxGetVariantCast(propgrid->GetPropertyValue(shape_outline_color_pgid), wxColour);
+	style.fill_color = { fill_color.Red(), fill_color.Green(), fill_color.Blue() };
+	style.outline_color = { outline_color.Red(), outline_color.Green(), outline_color.Blue() };
+
+	m_frame->shape_style = style;
+	m_frame->m_canvas->SetShapeStyle(style);
 }
 
 void ASSDrawSettingsDialog::OnSettingsRevertButtonClicked(wxCommandEvent &event)
