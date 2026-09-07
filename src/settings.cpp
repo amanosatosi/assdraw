@@ -47,6 +47,7 @@ ASSDrawSettingsDialog::ASSDrawSettingsDialog(wxWindow *parent, ASSDrawFrame *fra
 {
 	m_frame = frame;
 	propgrid = NULL;
+	refreshing_display = false;
 }
 
 void ASSDrawSettingsDialog::Init()
@@ -192,6 +193,9 @@ void ASSDrawSettingsDialog::OnSettingsApplyButtonClicked(wxCommandEvent &event)
 
 void ASSDrawSettingsDialog::OnSettingsPropertyChanged(wxPropertyGridEvent &event)
 {
+	if (refreshing_display)
+		return;
+
 	wxPGProperty* property = event.GetProperty();
 	if (property == shape_fill_enabled_pgid || property == shape_fill_color_pgid ||
 		property == shape_fill_opacity_pgid || property == shape_outline_enabled_pgid ||
@@ -231,6 +235,7 @@ void ASSDrawSettingsDialog::OnSettingsRevertButtonClicked(wxCommandEvent &event)
 void ASSDrawSettingsDialog::RefreshSettingsDisplay()
 {
 	if (propgrid == NULL) return;
+	refreshing_display = true;
 
 	#define UPDATESETTING(value, pgid) propgrid->SetPropertyValue(pgid, value);
 
@@ -272,5 +277,7 @@ void ASSDrawSettingsDialog::RefreshSettingsDisplay()
 	UPDATESETTING(m_frame->shape_style.outline_width, shape_outline_width_pgid)
 	UPDATESETTING(outline_color, shape_outline_color_pgid)
 	UPDATESETTING(m_frame->shape_style.outline_opacity, shape_outline_opacity_pgid)
+
+	refreshing_display = false;
 
 }

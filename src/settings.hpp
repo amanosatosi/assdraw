@@ -88,6 +88,7 @@ public:
 	wxPGId shape_outline_opacity_pgid;
 
 	wxPropertyGrid *propgrid;
+	bool refreshing_display;
 	//DECLARE_EVENT_TABLE()
 
 };
