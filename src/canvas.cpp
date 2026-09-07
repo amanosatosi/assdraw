@@ -259,8 +259,6 @@ void ASSDrawCanvas::ParseASS(wxString str, bool addundo)
 	if (!subshape_styles.empty())
 		shape_style = subshape_styles.begin()->second;
 	m_frame->shape_style = shape_style;
-	if (m_frame->settingsdlg)
-		m_frame->settingsdlg->RefreshSettingsDisplay();
 	ApplyShapeStyle();
 
 	RefreshUndocmds();
@@ -763,8 +761,6 @@ void ASSDrawCanvas::ShowColorSelector()
 	style.fill_enabled = true;
 	style.fill_color = { color.Red(), color.Green(), color.Blue() };
 	SetSubshapeStyle(coloring_target_shape, style);
-	if (m_frame->settingsdlg)
-		m_frame->settingsdlg->RefreshSettingsDisplay();
 }
 
 // Do the dragging

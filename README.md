@@ -52,9 +52,9 @@ is likewise not restored by drawing undo.
 
 ## Shape styling and output
 
-The **Shape** section in the existing Settings pane controls enabled state,
-RGB color, and opacity for fill and outline, plus outline width.  Changes apply
-immediately to the canvas.  Colors are serialized as ASS BGR values
+The **Coloring** mode is the compact shape-styling workflow: click a visible
+sub-shape, then double-click it to choose its fill color. Colors are
+serialized as ASS BGR values
 (`&HBBGGRR&`); the UI's opacity is converted to ASS alpha (`00` opaque, `FF`
 transparent).  Output is kept separate from geometry and has the form:
 
