@@ -237,7 +237,7 @@ void ASSDrawFrame::SetToolBars()
 	drawtbar->AddTool(TB_CLEAR, _T("Clear"), wxBITMAP(new_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_CLEAR);
     //tbar->AddTool(TB_EDITSRC, _T("Source"), wxBITMAP(src_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_EDITSRC);
     drawtbar->AddCheckTool(TB_PREVIEW, _T("Preview"), wxBITMAP(preview_), wxNullBitmap, _T(""), TIPS_PREVIEW);
-	drawtbar->AddTool(MODE_COLOR, _T("Coloring"), wxBITMAP(src_), wxNullBitmap, wxITEM_NORMAL, _T(""),
+	drawtbar->AddCheckTool(MODE_COLOR, _T("Coloring"), wxBITMAP(src_), wxNullBitmap, _T(""),
 		_T("Select a shape, then double-click it to choose its fill color"));
     //drawtbar->AddTool(TB_TRANSFORM, _T("Transform"), wxBITMAP(rot_), wxNullBitmap, wxITEM_NORMAL, _T(""), TIPS_TRANSFORM);
 	zoomslider = new wxSlider(drawtbar, TB_ZOOMSLIDER, 1000, 100, 5000, __DPDS__ );
@@ -723,6 +723,7 @@ void ASSDrawFrame::UpdateFrameUI(unsigned level)
 	{
 	case 0: // all
 		drawtbar->ToggleTool(TB_PREVIEW, m_canvas->IsPreviewMode());
+		drawtbar->ToggleTool(MODE_COLOR, m_canvas->GetDrawMode() == MODE_COLOR);
 		modetbar->ToggleTool(m_canvas->GetDrawMode(), true);
 		drawMenu->Check(MENU_PREVIEW, m_canvas->IsPreviewMode());
 		modeMenu->Check(m_canvas->GetDrawMode(), true);
