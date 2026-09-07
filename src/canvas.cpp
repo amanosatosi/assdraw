@@ -47,6 +47,20 @@
 #include <wx/filename.h>
 
 namespace {
+constexpr double kEditorPointMinimumDiameter = 8.0;
+constexpr double kEditorPointMaximumDiameter = 14.0;
+constexpr double kEditorPointHitRadius = 9.0;
+constexpr double kTransformHandleRadius = 8.0;
+
+double EditorPointDiameter(double scale)
+{
+	if (scale < kEditorPointMinimumDiameter)
+		return kEditorPointMinimumDiameter;
+	if (scale > kEditorPointMaximumDiameter)
+		return kEditorPointMaximumDiameter;
+	return scale;
+}
+
 agg::rgba ToAggColor(AssRgb color, std::uint8_t opacity)
 {
 	return agg::rgba(color.red / 255.0, color.green / 255.0,
@@ -323,6 +337,46 @@ bool ASSDrawCanvas::CanMove()
 	return !IsTransformMode() || dragAnchor_left == NULL;
 }
 
+Point* ASSDrawCanvas::FindPointAtScreenPosition(const wxPoint& position, bool control_point) const
+{
+	const double maximum_distance_squared = kEditorPointHitRadius * kEditorPointHitRadius;
+	double closest_distance_squared = maximum_distance_squared;
+	Point* closest_point = NULL;
+
+	for (DrawCmdList::const_iterator command = cmds.begin(); command != cmds.end(); ++command)
+	{
+		if (!control_point)
+		{
+			wxPoint candidate_position = (*command)->m_point->ToWxPoint();
+			const double dx = candidate_position.x - position.x;
+			const double dy = candidate_position.y - position.y;
+			const double distance_squared = dx * dx + dy * dy;
+			if (distance_squared <= closest_distance_squared)
+			{
+				closest_distance_squared = distance_squared;
+				closest_point = (*command)->m_point;
+			}
+			continue;
+		}
+
+		for (PointList::const_iterator point = (*command)->controlpoints.begin();
+			point != (*command)->controlpoints.end(); ++point)
+		{
+			wxPoint candidate_position = (*point)->ToWxPoint();
+			const double dx = candidate_position.x - position.x;
+			const double dy = candidate_position.y - position.y;
+			const double distance_squared = dx * dx + dy * dy;
+			if (distance_squared <= closest_distance_squared)
+			{
+				closest_distance_squared = distance_squared;
+				closest_point = *point;
+			}
+		}
+	}
+
+	return closest_point;
+}
+
 // Do the dragging
 void ASSDrawCanvas::OnMouseMove(wxMouseEvent &event)
 {
@@ -549,13 +603,14 @@ void ASSDrawCanvas::OnMouseMove(wxMouseEvent &event)
     {
 		if (IsTransformMode())
 		{
+			const double transform_hit_radius = kTransformHandleRadius;
 			int oldrectbound = rectbound2upd;
 			rectbound2upd = -1;
 			rectbound2upd2 = -1;
 			for (int i = 0; i < 4; i++)
 			{
-				if (abs((int)rectbound2[i].x - mouse_point.x) <= pointsys->scale
-					&& abs((int)rectbound2[i].y - mouse_point.y) <= pointsys->scale)
+				if (abs((int)rectbound2[i].x - mouse_point.x) <= transform_hit_radius
+					&& abs((int)rectbound2[i].y - mouse_point.y) <= transform_hit_radius)
 						rectbound2upd = i;
 			}
 			for (int i = 0; rectbound2upd == -1 && i < 4; i++)
@@ -572,9 +627,9 @@ void ASSDrawCanvas::OnMouseMove(wxMouseEvent &event)
 				{
 					intersect = agg::calc_intersection(
 						pi.x, pi.y, pj.x, pj.y,
-	                    mouse_point.x - pointsys->scale, mouse_point.y,
-						mouse_point.x + pointsys->scale, mouse_point.y, &ix, &iy);
-					intersect &= fabs(mouse_point.x - ix) <= pointsys->scale;
+						mouse_point.x - transform_hit_radius, mouse_point.y,
+						mouse_point.x + transform_hit_radius, mouse_point.y, &ix, &iy);
+					intersect &= fabs(mouse_point.x - ix) <= transform_hit_radius;
 					intersect &= (pj.y > pi.y?
 						pj.y - dy3 > iy && iy > pi.y + dy3:
 						pj.y + dy3 < iy && iy < pi.y - dy3);
@@ -583,9 +638,9 @@ void ASSDrawCanvas::OnMouseMove(wxMouseEvent &event)
 				{
 					intersect = agg::calc_intersection(
 						pi.x, pi.y, pj.x, pj.y,
-	                    mouse_point.x, mouse_point.y - pointsys->scale,
-						mouse_point.x, mouse_point.y + pointsys->scale, &ix, &iy);
-					intersect &= fabs(mouse_point.y - iy) <= pointsys->scale;
+						mouse_point.x, mouse_point.y - transform_hit_radius,
+						mouse_point.x, mouse_point.y + transform_hit_radius, &ix, &iy);
+					intersect &= fabs(mouse_point.y - iy) <= transform_hit_radius;
 					intersect &= (pj.x > pi.x?
 						pj.x - dx3 > ix && ix > pi.x + dx3:
 						pj.x + dx3 < ix && ix < pi.x - dx3);
@@ -609,17 +664,13 @@ void ASSDrawCanvas::OnMouseMove(wxMouseEvent &event)
 	            when it's dragging
 	         */
 
-			// check if mouse points on any control point first
+			// Check controls first, then primary points.  Primary points keep the
+			// historical priority where they overlap a Bezier handle.
 			Point* last_pointedAt_point = pointedAt_point;
-			ControlAt( wx, wy, pointedAt_point );
-
-			// then check if mouse points on any m_points
-			// override any control point set to pointedAt_point above
-			DrawCmd* p = PointAt( wx, wy );
-			if (p != NULL)
-			{
-				pointedAt_point = p->m_point;
-			}
+			pointedAt_point = FindPointAtScreenPosition(mouse_point, true);
+			Point* main_point = FindPointAtScreenPosition(mouse_point, false);
+			if (main_point != NULL)
+				pointedAt_point = main_point;
 
 			if (pointedAt_point != last_pointedAt_point)
 			{
@@ -758,6 +809,16 @@ void ASSDrawCanvas::OnMouseLeftDown(wxMouseEvent& event)
 	// wxPoint to Point
 	int px, py;
 	pointsys->FromWxPoint(q, px, py);
+
+	// A click may arrive before a motion event (for example after changing
+	// windows), so refresh the device-space hit target here as well.
+	if (!IsTransformMode())
+	{
+		pointedAt_point = FindPointAtScreenPosition(q, true);
+		Point* main_point = FindPointAtScreenPosition(q, false);
+		if (main_point != NULL)
+			pointedAt_point = main_point;
+	}
 
 	// create new cmd if in draw mode / or delete point if del tool selected
 	switch (draw_mode)
@@ -1393,14 +1454,14 @@ void ASSDrawCanvas::DoDraw( RendererBase& rbase, RendererPrimitives& rprim, Rend
 			if (rectbound2upd != -1)
 			{
 				agg::ellipse circ(rectbound2[rectbound2upd].x, rectbound2[rectbound2upd].y,
-					pointsys->scale, pointsys->scale);
+					kTransformHandleRadius, kTransformHandleRadius);
 				agg::conv_contour< agg::ellipse > c(circ);
 				rasterizer.add_path(c);
 			}
 			if (rectbound2upd2 != -1)
 			{
 				agg::ellipse circ(rectbound2[rectbound2upd2].x, rectbound2[rectbound2upd2].y,
-					pointsys->scale, pointsys->scale);
+					kTransformHandleRadius, kTransformHandleRadius);
 				agg::conv_contour< agg::ellipse > c(circ);
 				rasterizer.add_path(c);
 			}
@@ -1421,7 +1482,7 @@ void ASSDrawCanvas::DoDraw( RendererBase& rbase, RendererPrimitives& rprim, Rend
 			rasterizer.add_path(stroke);
 			render_scanlines(rsolid);
 
-			double diameter = pointsys->scale;
+			double diameter = EditorPointDiameter(pointsys->scale);
 			double radius = diameter / 2.0;
 			// hilite
 			if (hilite_cmd && hilite_cmd->type != M)

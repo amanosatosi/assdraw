@@ -29,7 +29,8 @@ runtime DLLs reported by `ldd`, and the project notice files.
 The editor retains the historical `m`, `l`, `b`, and optional spline command
 workflow, including point/handle editing, transformations, canvas pan/zoom,
 background-image loading, placement, scaling, opacity, and the command-text
-clipboard workflow.
+clipboard workflow.  Point and Bezier-handle markers, including their drag
+targets, retain a usable on-screen size when the canvas is zoomed out.
 
 Drawing undo history now contains only drawing/document state.  Background
 image identity, placement, scale, and opacity are reference/view state, so

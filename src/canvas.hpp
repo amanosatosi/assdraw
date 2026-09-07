@@ -245,6 +245,11 @@ protected:
 	// set command and point to highlight
 	virtual void SetHighlighted ( DrawCmd* cmd, Point* point );
 
+	// Find an editor point in device pixels.  This deliberately does not use
+	// ASSDrawEngine::PointAt/ControlAt: their draw-coordinate comparison makes
+	// the interactive target shrink to less than a pixel when zoomed out.
+	virtual Point* FindPointAtScreenPosition(const wxPoint& position, bool control_point) const;
+
 	// selects all points within (lx, ty) , (rx, by) returns # of selected points
 	virtual int SelectPointsWithin( int lx, int rx, int ty, int by, SELECTMODE smode = NEW );
 	virtual void ClearPointsSelection();
