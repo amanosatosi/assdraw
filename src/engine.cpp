@@ -153,9 +153,8 @@ ASSDrawEngine::~ASSDrawEngine()
 int ASSDrawEngine::ParseASS ( wxString str )
 {
 	ResetEngine( false );
-	// The command pane is multiline and generated ASS places the override
-	// block on its own line. Whitespace must separate tokens; deleting it
-	// joins (for example) "}" and "m" into an invalid command token.
+	// The command pane accepts multiline pasted input. Normalize whitespace
+	// without changing token boundaries; exported ASS itself is one line.
 	str.Replace(_T("\t"), _T(" "));
 	str.Replace(_T("\r"), _T(" "));
 	str.Replace(_T("\n"), _T(" "));

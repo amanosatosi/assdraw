@@ -35,6 +35,7 @@
 
 #include "assdraw.hpp"
 #include "cmd.hpp"
+#include "styled_ass.hpp"
 #include "agg_gsv_text.h"
 #include "agg_ellipse.h"
 #include "agg_conv_dash.h"
@@ -42,7 +43,6 @@
 #include "agg_trans_perspective.h"
 
 #include "agghelper.hpp"
-#include <cctype>
 #include <math.h>
 #include <wx/colordlg.h>
 #include <wx/image.h>
@@ -53,6 +53,41 @@ constexpr double kEditorPointMinimumDiameter = 8.0;
 constexpr double kEditorPointMaximumDiameter = 14.0;
 constexpr double kEditorPointHitRadius = 9.0;
 constexpr double kTransformHandleRadius = 8.0;
+
+AssDrawingCommand ToAssDrawingCommand(const DrawCmd* command)
+{
+	AssDrawingCommand serialized;
+	serialized.type = "mnlbspc"[static_cast<int>(command->type)];
+
+	if (command->type == B)
+	{
+		if (command->initialized && command->controlpoints.size() >= 2)
+		{
+			PointList::const_iterator control = command->controlpoints.begin();
+			serialized.points.push_back({ (*control)->x(), (*control)->y() });
+			++control;
+			serialized.points.push_back({ (*control)->x(), (*control)->y() });
+		}
+		else
+			serialized.unknown_point_pairs = 2;
+	}
+	else if (command->type == S)
+	{
+		if (command->initialized)
+		{
+			for (PointList::const_iterator control = command->controlpoints.begin();
+				control != command->controlpoints.end(); ++control)
+				serialized.points.push_back({ (*control)->x(), (*control)->y() });
+		}
+		else
+			serialized.unknown_point_pairs = command->controlpoints.size();
+		serialized.close_spline = static_cast<const DrawCmd_S*>(command)->closed;
+	}
+
+	if (command->m_point)
+		serialized.points.push_back({ command->m_point->x(), command->m_point->y() });
+	return serialized;
+}
 
 double EditorPointDiameter(double scale)
 {
@@ -219,45 +254,24 @@ void ASSDrawCanvas::ParseASS(wxString str, bool addundo)
 	if (addundo)
 		AddUndo(_T("Modify drawing commands"));
 
-	std::vector<ShapeStyle> imported_styles;
-	ShapeStyle active_style = shape_style;
 	const std::string source(str.mb_str(wxConvUTF8));
-	for (std::size_t index = 0; index < source.size(); ++index)
-	{
-		if (source[index] == '{')
-		{
-			const std::size_t end = source.find('}', index + 1);
-			if (end != std::string::npos)
-			{
-				ShapeStyle candidate = active_style;
-				if (candidate.ImportOverrideTags(source.substr(index, end - index + 1)))
-					active_style = candidate;
-				index = end;
-			}
-			continue;
-		}
-
-		const bool token_start = index == 0 || std::isspace(static_cast<unsigned char>(source[index - 1])) || source[index - 1] == '}';
-		const bool token_end = index + 1 < source.size() && std::isspace(static_cast<unsigned char>(source[index + 1]));
-		if (token_start && token_end && (source[index] == 'm' || source[index] == 'M'))
-			imported_styles.push_back(active_style);
-	}
+	const StyledAssImport imported = ImportStyledAss(source, shape_style);
 
 	subshape_styles.clear();
 	coloring_target_shape = NULL;
 	coloring_target_selected = false;
-	ASSDrawEngine::ParseASS(str);
+	ASSDrawEngine::ParseASS(wxString(imported.drawing_text.c_str(), wxConvUTF8));
 	std::size_t style_index = 0;
 	for (DrawCmdList::iterator command = cmds.begin(); command != cmds.end(); ++command)
 	{
 		if ((*command)->type != M)
 			continue;
-		subshape_styles[*command] = style_index < imported_styles.size() ?
-			imported_styles[style_index] : shape_style;
+		subshape_styles[*command] = style_index < imported.contour_styles.size() ?
+			imported.contour_styles[style_index] : shape_style;
 		++style_index;
 	}
-	if (!subshape_styles.empty())
-		shape_style = subshape_styles.begin()->second;
+	if (!imported.contour_styles.empty())
+		shape_style = imported.contour_styles.front();
 	m_frame->shape_style = shape_style;
 	ApplyShapeStyle();
 
@@ -271,16 +285,20 @@ wxString ASSDrawCanvas::GenerateDrawingASS()
 
 wxString ASSDrawCanvas::GenerateASS()
 {
-	wxString output;
 	const std::vector<StyledSubshape> subshapes = BuildStyledSubshapes();
+	std::vector<StyledAssSubshape> serializable;
+	serializable.reserve(subshapes.size());
 	for (std::vector<StyledSubshape>::const_iterator shape = subshapes.begin(); shape != subshapes.end(); ++shape)
 	{
-		output += wxString(shape->style.SerializeOverrideTags().c_str(), wxConvUTF8) + _T("\n");
+		StyledAssSubshape encoded;
+		encoded.style = shape->style;
+		encoded.commands.reserve(shape->commands.size());
 		for (std::vector<DrawCmd*>::const_iterator command = shape->commands.begin(); command != shape->commands.end(); ++command)
-			output += (*command)->ToString() + _T(" ");
-		output += _T("\n");
+			encoded.commands.push_back(ToAssDrawingCommand(*command));
+		serializable.push_back(encoded);
 	}
-	return output;
+	const std::string output = SerializeStyledAss(serializable);
+	return wxString(output.c_str(), wxConvUTF8);
 }
 
 DrawCmd* ASSDrawCanvas::AppendCmd(DrawCmd* cmd)

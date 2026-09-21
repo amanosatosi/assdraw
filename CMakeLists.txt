@@ -102,6 +102,7 @@ add_executable(ASSDraw3 WIN32
     src/library.cpp
     src/settings.cpp
     src/shape_style.cpp
+    src/styled_ass.cpp
     src/wxAGG/AGGWindow.cpp
 )
 
@@ -129,9 +130,13 @@ if(BUILD_TESTING)
     add_executable(assdraw-core-tests
         tests/style_history_tests.cpp
         src/shape_style.cpp
+        src/styled_ass.cpp
     )
     target_include_directories(assdraw-core-tests PRIVATE src)
     target_compile_features(assdraw-core-tests PRIVATE cxx_std_17)
+    # The tests use standard assert checks; keep them active in the Release
+    # configuration used by GitHub Actions.
+    target_compile_options(assdraw-core-tests PRIVATE /UNDEBUG)
     set_target_properties(assdraw-core-tests PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     )

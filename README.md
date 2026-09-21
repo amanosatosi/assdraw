@@ -45,10 +45,12 @@ so formatted command text cannot join and corrupt adjacent draw commands.
 oppositely-wound hole is not selectable). Double-click the selected area to
 open the native Windows color selector for the fill. This changes `\1c` only:
 ASS drawing coordinates are unchanged, although an enabled `\bord` naturally
-extends pixels around the same coordinates. Each separate visible sub-shape
-has its own fill/outline style and is exported as its own complete ASS drawing
-run; directly nested reverse-winding contours remain attached to their outer
-sub-shape as holes.
+extends pixels around the same coordinates. Differently-styled contours use
+separate ASS drawing runs, while adjacent contours with the same effective
+style share one run. ASS lays separate drawing runs out inline, so ASSDraw
+offsets their serialized X coordinates by prior run advances to keep every
+contour in the editor's shared logical coordinate system. Directly nested
+reverse-winding contours remain in their outer contour's run as holes.
 
 Drawing undo history now contains only drawing/document state.  Background
 image identity, placement, scale, and opacity are reference/view state, so
@@ -59,13 +61,14 @@ is likewise not restored by drawing undo.
 
 The **Coloring** mode is the compact shape-styling workflow: click a visible
 sub-shape, then double-click it to choose its fill color. Colors are
-serialized as ASS BGR values
-(`&HBBGGRR&`); the UI's opacity is converted to ASS alpha (`00` opaque, `FF`
-transparent).  Output is kept separate from geometry and has the form:
+serialized in canonical uppercase ASS BGR form (`&HBBGGRR&`); the UI's opacity
+is converted to uppercase ASS alpha (`&H00&` opaque, `&HFF&` transparent).
+Copied ASS is one physical line suitable for one event text field. Multiline
+whitespace remains accepted on import. Output is kept separate from geometry
+and has the form:
 
 ```
-{\p1\bord3.00\1c&H42A5F5&\1a&H00&\3c&HFFFFFF&\3a&H00&}
-m 100 100 l 300 100 l 300 300 l 100 300
+{\p1\bord3.00\1c&H42A5F5&\1a&H00&\3c&HFFFFFF&\3a&H00&}m 100 100 l 300 100 l 300 300 l 100 300
 ```
 
 Disabled fill is emitted as `\1a&HFF&`; disabled outline uses `\bord0` and

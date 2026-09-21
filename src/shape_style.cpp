@@ -8,10 +8,21 @@
 
 namespace {
 
+std::size_t FindHexMarker(const std::string& text, const std::string& tag)
+{
+    const std::string marker = "\\" + tag + "&H";
+    std::size_t start = text.find(marker);
+    if (start != std::string::npos)
+        return start;
+    std::string lowercase_marker = marker;
+    lowercase_marker.back() = 'h';
+    return text.find(lowercase_marker);
+}
+
 bool ReadHexByte(const std::string& text, const std::string& tag, std::uint8_t& value)
 {
     const std::string marker = "\\" + tag + "&H";
-    const std::size_t start = text.find(marker);
+    const std::size_t start = FindHexMarker(text, tag);
     if (start == std::string::npos)
         return false;
 
@@ -32,7 +43,7 @@ bool ReadHexByte(const std::string& text, const std::string& tag, std::uint8_t& 
 bool ReadColor(const std::string& text, const std::string& tag, AssRgb& color)
 {
     const std::string marker = "\\" + tag + "&H";
-    const std::size_t start = text.find(marker);
+    const std::size_t start = FindHexMarker(text, tag);
     if (start == std::string::npos)
         return false;
 
