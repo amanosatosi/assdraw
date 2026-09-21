@@ -7,22 +7,27 @@ ASS editor.
 
 ## Windows builds
 
-The supported build is CMake with current MSYS2 MinGW-w64 and wxWidgets 3.2.
-The renderer is the pinned AGG 2.6 source dependency declared in CMake; it is
-fetched and built by CMake rather than relying on an obsolete system package.
+The supported build is 64-bit MSVC through CMake. wxWidgets 3.2.11 and AGG are
+pinned source dependencies, built as static libraries together with their
+bundled dependencies. Release targets use the static MSVC runtime (`/MT`), so
+the distributable application is the single file `ASSDraw3.exe`.
+
+The normal build interface from a Visual Studio developer environment is:
+
+```powershell
+cmake -S . -B build -A x64
+cmake --build build --config Release
+```
+
+The executable is written to `build/Release/ASSDraw3.exe`. The historical
+Autotools, Dev-C++, and Visual Studio 2008 files remain as reference, but they
+are not the supported Windows build.
+
 GitHub Actions is the authoritative compiler and test environment. The Windows
-workflow installs dependencies, configures CMake, builds, runs the
-non-interactive core tests, verifies `assdraw.exe`, and uploads
-`ASSDraw-windows-x64`.
-
-For a local development environment (not required to use the CI artifacts),
-install the MSYS2 packages named in `.github/workflows/windows.yml`, then use
-CMake/Ninja in an MSYS2 MinGW64 shell. Generated project files are not kept in
-the repository; historical Autotools, Dev-C++, and Visual Studio project files
-remain only as reference.
-
-The portable artifact contains `assdraw.exe`, the non-system MinGW/wxWidgets
-runtime DLLs reported by `ldd`, and the project notice files.
+workflow builds with Visual Studio 2022, runs the non-interactive tests, audits
+the EXE imports with `dumpbin`, verifies the embedded icon/version/manifest,
+launches the EXE from an otherwise empty temporary directory, and uploads
+`ASSDraw3.exe` as the only file in the `ASSDraw3-windows-x64` artifact.
 
 ## Drawing, background tracing, and undo
 

@@ -15,5 +15,5 @@ assigning a new licence to it.
 The Windows build fetches the AGG 2.6 fork at commit
 `c4f36b4432142f22c0bf82c6fbdb41567a236be2`, whose upstream documentation says
 it is based on AGG 2.4 under the historical permissive AGG licensing.  Its
-`copying` file is included in portable artifacts.  This does not alter the GPL
+`copying` file is retained in the CI build tree. This does not alter the GPL
 notices retained in ASSDraw's historical AGG-derived spline files.

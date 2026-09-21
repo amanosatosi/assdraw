@@ -9,6 +9,9 @@
 //
 #include <windows.h>
 
+#define ASSDRAW_VERSION_COMMA 3,0,0,0
+#define ASSDRAW_VERSION_STRING "3.0.0.0\0"
+
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -29,6 +32,50 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 APPICO                  ICON                    "tsukasa.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Manifest
+//
+
+1                       RT_MANIFEST             "assdraw.manifest"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION ASSDRAW_VERSION_COMMA
+ PRODUCTVERSION ASSDRAW_VERSION_COMMA
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName", "ai-chan\0"
+            VALUE "FileDescription", "A tool for designing shapes for ASS subtitles\0"
+            VALUE "FileVersion", ASSDRAW_VERSION_STRING
+            VALUE "InternalName", "ASSDraw3\0"
+            VALUE "OriginalFilename", "ASSDraw3.exe\0"
+            VALUE "ProductName", "ASSDraw3\0"
+            VALUE "ProductVersion", ASSDRAW_VERSION_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -47,23 +47,6 @@
 #include "xpm/res.h"
 #endif
 
-/////////////
-// Libraries
-#ifdef __VISUALC__
-#pragma comment(lib, "Vfw32.lib")
-#pragma comment(lib, "comctl32.lib")
-#pragma comment(lib, "rpcrt4.lib")
-#pragma comment(lib, "winmm.lib")
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "wsock32.lib")
-#ifdef __WXDEBUG__
-#pragma comment(lib, "wxmsw28ud_propgrid.lib")
-#else
-#pragma comment(lib, "wxmsw28u_propgrid.lib")
-#endif
-#endif
-
-
 //DEFINE_EVENT_TYPE(wxEVT_SETTINGS_CHANGED)
 
 // initialize wxWidget to accept our App class

@@ -1,59 +1,79 @@
-name: Windows
+name: Windows MSVC static executable
 
 on:
   push:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-msvc-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test-package:
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
+  build-test-verify:
+    name: Build and verify ASSDraw3.exe
+    runs-on: windows-2022
+    timeout-minutes: 90
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: msys2/setup-msys2@v2
+      - name: Check out ASSDraw
+        uses: actions/checkout@v4
+
+      - name: Identify the MSVC toolchain
+        id: msvc
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $install = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $install) { throw 'Visual Studio C++ tools were not found.' }
+          $compiler = Get-ChildItem "$install\VC\Tools\MSVC\*\bin\Hostx64\x64\cl.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $compiler) { throw 'The x64 MSVC compiler was not found.' }
+          $version = $compiler.VersionInfo.FileVersion
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          & cmake --version
+          Write-Host "Visual Studio: $install"
+          Write-Host "MSVC compiler: $($compiler.FullName) ($version)"
+
+      - name: Restore pinned dependency build cache
+        uses: actions/cache@v4
         with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-pkgconf
-            mingw-w64-x86_64-wxwidgets3.2
-      - name: Toolchain diagnostics
-        run: |
-          gcc --version
-          g++ --version
-          cmake --version
-          wx-config --version
-      - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=ON
-      - name: Build
-        run: cmake --build build --verbose
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-      - name: Package portable application
-        run: |
-          test -f build/assdraw.exe
-          mkdir -p artifact/ASSDraw
-          cp build/assdraw.exe artifact/ASSDraw/
-          ldd build/assdraw.exe | awk '/\/mingw64\/bin\// { print $3 }' | sort -u | xargs -r -I{} cp {} artifact/ASSDraw/
-          cp LICENSE NOTICE.md artifact/ASSDraw/
-          mkdir -p artifact/ASSDraw/licenses
-          cp build/THIRD_PARTY_AGG_COPYING artifact/ASSDraw/licenses/AGG-COPYING
-          for package in wxwidgets3.2; do
-            if [ -d "/mingw64/share/licenses/${package}" ]; then
-              cp -R "/mingw64/share/licenses/${package}" "artifact/ASSDraw/licenses/${package}"
-            fi
-          done
-          test -f artifact/ASSDraw/assdraw.exe
-          find artifact/ASSDraw -maxdepth 1 -type f -print
-      - name: Upload portable ASSDraw
+          path: |
+            build/_deps
+            build/lib
+          key: windows-2022-x64-msvc-${{ steps.msvc.outputs.version }}-wx-3.2.11-agg-c4f36b4-mt-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure x64 Release build
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=ON
+
+      - name: Build ASSDraw and tests
+        shell: pwsh
+        run: cmake --build build --config Release --parallel 2 --verbose
+
+      - name: Run non-interactive tests
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Verify static runtime dependencies and embedded resources
+        shell: pwsh
+        run: .\ci\verify-windows-binary.ps1 -Executable .\build\Release\ASSDraw3.exe
+
+      - name: Smoke-test the standalone executable
+        shell: pwsh
+        run: .\ci\smoke-test-windows.ps1 -Executable .\build\Release\ASSDraw3.exe
+
+      - name: Upload the single-file application
         uses: actions/upload-artifact@v4
         with:
-          name: ASSDraw-windows-x64
-          path: artifact/ASSDraw
+          name: ASSDraw3-windows-x64
+          path: build/Release/ASSDraw3.exe
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
