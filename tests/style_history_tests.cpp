@@ -90,6 +90,11 @@ void AssertCommandsEqual(const std::vector<AssDrawingCommand>& left,
 
 void TestColorCase()
 {
+    assert(CanonicalizeAssHexLiterals("&hff80ff&") == "&HFF80FF&");
+    assert(CanonicalizeAssHexLiterals("\\1c&hFf80fF&\\1a&h7f&") ==
+        "\\1c&HFF80FF&\\1a&H7F&");
+    assert(CanonicalizeAssHexLiterals("&hnot-hex&") == "&hnot-hex&");
+
     const char* inputs[] = {
         "{\\bord1\\1c&hff00aa&\\1a&h7f&\\3c&h1234ab&\\3a&h2e&}",
         "{\\bord1\\1c&Hff00aa&\\1a&H7f&\\3c&H1234ab&\\3a&H2e&}",

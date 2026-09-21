@@ -647,7 +647,9 @@ void ASSDrawFrame::OnSelect_CopyCommands(wxCommandEvent& WXUNUSED(event))
 {
 	if (!wxTheClipboard->Open())
 		return;
-	wxTheClipboard->SetData(new wxTextDataObject(srctxtctrl->GetValue()));
+	const std::string canonical = CanonicalizeAssHexLiterals(
+		std::string(srctxtctrl->GetValue().mb_str(wxConvUTF8)));
+	wxTheClipboard->SetData(new wxTextDataObject(wxString(canonical.c_str(), wxConvUTF8)));
 	wxTheClipboard->Close();
 	SetStatusText(_T("ASS drawing copied to clipboard."), 1);
 }
@@ -658,6 +660,9 @@ void ASSDrawFrame::UpdateASSCommandStringToSrcTxtCtrl(wxString cmd)
 		cmd.UpperCase();
 	else
 		cmd.LowerCase();
+	const std::string canonical = CanonicalizeAssHexLiterals(
+		std::string(cmd.mb_str(wxConvUTF8)));
+	cmd = wxString(canonical.c_str(), wxConvUTF8);
 	srctxtctrl->ChangeValue(cmd);
 	//srctxtctrl->AppendText(cmd);
 }

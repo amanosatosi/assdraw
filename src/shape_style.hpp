@@ -30,3 +30,4 @@ struct ShapeStyle
 
 std::string AssColorFromRgb(AssRgb color);
 std::string AssAlphaFromOpacity(std::uint8_t opacity);
+std::string CanonicalizeAssHexLiterals(std::string text);

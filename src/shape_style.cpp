@@ -3,6 +3,7 @@
 #include "shape_style.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 
@@ -78,6 +79,27 @@ std::string AssAlphaFromOpacity(std::uint8_t opacity)
     char value[6] = {};
     std::snprintf(value, sizeof(value), "&H%02X&", 255U - static_cast<unsigned>(opacity));
     return value;
+}
+
+std::string CanonicalizeAssHexLiterals(std::string text)
+{
+    for (std::size_t start = 0; start + 2 < text.size(); ++start) {
+        if (text[start] != '&' || (text[start + 1] != 'H' && text[start + 1] != 'h'))
+            continue;
+        const std::size_t end = text.find('&', start + 2);
+        if (end == std::string::npos || end == start + 2)
+            continue;
+        bool hexadecimal = true;
+        for (std::size_t index = start + 2; index < end; ++index)
+            hexadecimal = hexadecimal && std::isxdigit(static_cast<unsigned char>(text[index])) != 0;
+        if (!hexadecimal)
+            continue;
+        text[start + 1] = 'H';
+        for (std::size_t index = start + 2; index < end; ++index)
+            text[index] = static_cast<char>(std::toupper(static_cast<unsigned char>(text[index])));
+        start = end;
+    }
+    return text;
 }
 
 std::string ShapeStyle::SerializeOverrideTags() const
