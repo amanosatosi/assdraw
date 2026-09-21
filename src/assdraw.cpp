@@ -743,7 +743,9 @@ void ASSDrawFrame::OnClose(wxCloseEvent &event)
 {
 	if (event.CanVeto() && behaviors.confirmquit)
 	{
-		if (wxMessageDialog(this, _T("Do you want to close ASSDraw3 now?"), _T("Confirmation"), wxOK | wxCANCEL).ShowModal() == wxID_OK)
+		wxMessageDialog exit_dialog(this, _T("Exit?"), _T("ASSDraw3"), wxOK | wxCANCEL | wxICON_QUESTION);
+		exit_dialog.SetOKCancelLabels(_T("Exit"), _T("FK. sry. misclick."));
+		if (exit_dialog.ShowModal() == wxID_OK)
 			Destroy();
 		else
 			event.Veto();
